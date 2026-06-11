@@ -89,5 +89,10 @@ invoke:
 	@echo "agent runs asynchronously — the call returns 'accepted'; watch 'make logs'"
 	@echo "for progress and the final answer (CloudWatch can lag a minute on a cold runtime)."
 
+# The runtime's log group is keyed by its full id (e.g. harness-1ugjfL3pFs),
+# which we pull out of the ARN. `aws logs tail` needs the exact group name.
+RUNTIME_ID = $(shell echo "$(RUNTIME_ARN)" | sed 's|.*runtime/||')
+LOG_GROUP  = /aws/bedrock-agentcore/runtimes/$(RUNTIME_ID)-DEFAULT
+
 logs:
-	@aws logs tail /aws/bedrock-agentcore/runtimes/harness- --region $(REGION) --since 10m --follow
+	@aws logs tail "$(LOG_GROUP)" --region $(REGION) --since 10m --follow
