@@ -1,0 +1,8 @@
+node_modules/
+.DS_Store
+cdk.out/
+dist/
+*.tsbuildinfo
+__pycache__/
+.env.local
+*.env.local

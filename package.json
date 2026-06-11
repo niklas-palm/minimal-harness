@@ -1,0 +1,25 @@
+{
+  "name": "harness",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "A minimal Strands code agent on AWS Bedrock AgentCore Runtime, invoked asynchronously via the API.",
+  "scripts": {
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.660.0",
+    "@strands-agents/sdk": "^1.4.0",
+    "bedrock-agentcore": "^0.2.4",
+    "duck-duck-scrape": "^2.2.7",
+    "fast-glob": "^3.3.2",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "tsx": "^4.19.0",
+    "typescript": "^6.0.3"
+  }
+}
