@@ -9,8 +9,8 @@ import { Construct } from 'constructs';
 const AGENTCORE_PRINCIPAL = 'bedrock-agentcore.amazonaws.com';
 // After this many seconds idle, AgentCore terminates the microVM and all its
 // state. This sample doesn't persist anything across invocations, so we keep
-// it short. Raise it (or add a session manager) if you need state to survive
-// longer between calls — see the blog's "what I'd add" section.
+// it short. Raise it (or externalise state, e.g. via AgentCore Memory) if you
+// need state to survive longer between calls.
 const IDLE_TIMEOUT_SECONDS = 120;
 
 export interface RuntimeStackProps extends StackProps {

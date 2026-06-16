@@ -1,7 +1,7 @@
 // Strands Agent factory for the harness.
 //
 // Each invocation builds a fresh Agent — no SessionManager, no shared state.
-// The system prompt is just SYSTEM_PROMPT; the toolset is the 14 base tools.
+// The agent gets the baseline toolset plus the skills plugin; nothing else.
 import { Agent, BedrockModel } from '@strands-agents/sdk';
 import { AgentSkills } from '@strands-agents/sdk/vended-plugins/skills';
 
