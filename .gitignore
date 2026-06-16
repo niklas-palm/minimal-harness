@@ -6,4 +6,4 @@ dist/
 __pycache__/
 .env.local
 *.env.local
-blog.md
+blog*.md
