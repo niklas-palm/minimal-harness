@@ -96,14 +96,11 @@ invoke:
 RUNTIME_ID = $(shell echo "$(RUNTIME_ARN)" | sed 's|.*runtime/||')
 LOG_GROUP  = /aws/bedrock-agentcore/runtimes/$(RUNTIME_ID)-DEFAULT
 
-# Default: print the last 30 min grouped by session id, then exit.
-# `make logs FOLLOW=1` streams live instead (ungrouped, one line per event).
+# Prints the last 30 min, one JSON event per line. `make logs FOLLOW=1` streams live.
 FOLLOW ?=
 logs:
 ifeq ($(FOLLOW),)
-	@aws logs tail "$(LOG_GROUP)" --region $(REGION) --since 30m \
-	  | python3 scripts/format-logs.py
+	@aws logs tail "$(LOG_GROUP)" --region $(REGION) --since 30m --format short
 else
-	@aws logs tail "$(LOG_GROUP)" --region $(REGION) --since 30m --follow \
-	  | python3 scripts/format-logs.py --stream
+	@aws logs tail "$(LOG_GROUP)" --region $(REGION) --since 30m --format short --follow
 endif
