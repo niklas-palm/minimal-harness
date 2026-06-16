@@ -10,7 +10,7 @@ REGISTRY = $(ACCOUNT).dkr.ecr.$(REGION).amazonaws.com
 CDK       := $(CURDIR)/cdk/node_modules/.bin/cdk
 TAGS_FILE := /tmp/harness-image-tag.json
 # Files whose content determines the image tag — change any, get a new tag.
-HASH_INPUTS := src Dockerfile package.json package-lock.json
+HASH_INPUTS := src skills Dockerfile package.json package-lock.json
 
 help:
 	@echo "Setup:"

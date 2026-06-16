@@ -33,6 +33,8 @@ src/
   config.ts    single source of runtime config (loud on missing required vars)
   tools.ts     the 14 base tools (files, shell, run_python, web, data preview)
   prompt.ts    the system prompt   emit.ts  JSON-line stdout logger
+skills/
+  <name>/SKILL.md       drop a folder here and it's loaded automatically
 cdk/
   bin/harness.ts        CDK app
   lib/runtime-stack.ts  the only stack: CfnRuntime + its IAM role

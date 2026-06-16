@@ -3,13 +3,20 @@
 // Each invocation builds a fresh Agent — no SessionManager, no shared state.
 // The system prompt is just SYSTEM_PROMPT; the toolset is the 14 base tools.
 import { Agent, BedrockModel } from '@strands-agents/sdk';
+import { AgentSkills } from '@strands-agents/sdk/vended-plugins/skills';
 
-import { BEDROCK_MODEL_ID, REGION } from './config.js';
+import { BEDROCK_MODEL_ID, REGION, SKILLS_DIR } from './config.js';
 import { emit } from './emit.js';
 import { SYSTEM_PROMPT } from './prompt.js';
 import { ALL_TOOLS } from './tools.js';
 
 export function buildAgent(sessionId: string): Agent {
+  // Progressive-disclosure skills. The plugin scans SKILLS_DIR, injects an
+  // <available_skills> list into the system prompt, and registers a `skills`
+  // tool the agent calls to load a skill's full instructions on demand. Drop
+  // a new folder with a SKILL.md into skills/ and it's picked up automatically.
+  const skillsPlugin = new AgentSkills({ skills: [SKILLS_DIR] });
+
   const agent = new Agent({
     name: 'harness',
     model: new BedrockModel({
@@ -20,6 +27,7 @@ export function buildAgent(sessionId: string): Agent {
     }),
 
     tools: [...ALL_TOOLS] as any,
+    plugins: [skillsPlugin],
     systemPrompt: SYSTEM_PROMPT,
     printer: false,
   });

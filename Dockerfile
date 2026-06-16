@@ -29,6 +29,10 @@ RUN npm ci --no-fund --no-audit
 
 COPY src/ ./src/
 
+# Skills surfaced to the agent via the AgentSkills plugin. Each subdir under
+# skills/ is one skill (must contain SKILL.md) and is loaded automatically.
+COPY skills/ ./skills/
+
 RUN mkdir -p /workspace
 
 ENV NODE_NO_WARNINGS=1

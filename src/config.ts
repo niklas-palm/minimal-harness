@@ -22,5 +22,9 @@ export const REGION = 'eu-north-1';
 // The agent's sandbox. Tools refuse to touch anything outside it.
 export const WORKSPACE_DIR = pathResolve(process.env.WORKSPACE_DIR ?? '/workspace');
 
+// Where the AgentSkills plugin looks for skills. Each subfolder with a
+// SKILL.md is loaded automatically. Baked into the image at /app/skills.
+export const SKILLS_DIR = process.env.SKILLS_DIR ?? '/app/skills';
+
 // ── 2 · Required deploy config ──────────────────────────────────
 export const BEDROCK_MODEL_ID = required('BEDROCK_MODEL_ID');
