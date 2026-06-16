@@ -7,7 +7,7 @@ import { RuntimeStack } from '../lib/runtime-stack';
 
 const app = new App();
 
-// Hardcoded — every resource lives in eu-north-1. We do NOT honour
+// Hardcoded - every resource lives in eu-north-1. We do NOT honour
 // AWS_REGION / CDK_DEFAULT_REGION, because a stale shell env can silently
 // misroute a deploy to a neighbouring region.
 const env = {
@@ -25,7 +25,7 @@ const BEDROCK_MODEL_ID =
 // to point the runtime at, so we skip the stack.
 const imageTagsFile = app.node.tryGetContext('imageTagsFile') as string | undefined;
 if (!imageTagsFile) {
-  throw new Error('imageTagsFile context not set — run via `make deploy`, not raw cdk');
+  throw new Error('imageTagsFile context not set - run via `make deploy`, not raw cdk');
 }
 const { imageTag } = JSON.parse(readFileSync(imageTagsFile, 'utf8')) as { imageTag: string };
 

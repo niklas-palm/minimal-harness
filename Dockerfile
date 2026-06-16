@@ -1,9 +1,9 @@
 FROM --platform=linux/arm64 node:22-slim
 
 # System tools the base tools shell out to:
-#   ripgrep — backs grep_search
-#   git     — for agents that clone repos
-#   python3, pip — backs run_python and the preview_data formats (xlsx/parquet)
+#   ripgrep - backs grep_search
+#   git     - for agents that clone repos
+#   python3, pip - backs run_python and the preview_data formats (xlsx/parquet)
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ripgrep ca-certificates git \
       python3 python3-pip python3-venv \
@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir --break-system-packages \
       openpyxl==3.1.5 \
       pyarrow==24.0.0
 
-# tsx so we can run TypeScript directly — no compile step.
+# tsx so we can run TypeScript directly - no compile step.
 RUN npm install -g --no-fund --no-audit tsx@4
 
 WORKDIR /app

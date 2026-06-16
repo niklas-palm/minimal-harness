@@ -9,7 +9,7 @@ REGISTRY = $(ACCOUNT).dkr.ecr.$(REGION).amazonaws.com
 
 CDK       := $(CURDIR)/cdk/node_modules/.bin/cdk
 TAGS_FILE := /tmp/harness-image-tag.json
-# Files whose content determines the image tag — change any, get a new tag.
+# Files whose content determines the image tag - change any, get a new tag.
 HASH_INPUTS := src skills Dockerfile package.json package-lock.json
 
 help:
@@ -48,7 +48,7 @@ build.push: ecr.create
 	IMAGE=$(REGISTRY)/$(REPO_NAME):$$TAG; \
 	echo "tag: $$TAG"; \
 	if aws ecr describe-images --region $(REGION) --repository-name $(REPO_NAME) --image-ids imageTag=$$TAG >/dev/null 2>&1; then \
-	  echo "image already in ECR — skipping build"; \
+	  echo "image already in ECR - skipping build"; \
 	else \
 	  aws ecr get-login-password --region $(REGION) | docker login --username AWS --password-stdin $(REGISTRY); \
 	  docker buildx build --platform linux/arm64 -t $$IMAGE --push .; \

@@ -4,7 +4,7 @@ import { buildAgent, runAgentStream } from './agent.js';
 import { emit } from './emit.js';
 
 // One AgentCore microVM per runtimeSessionId. We use a fresh sessionId per
-// invocation, so every run is isolated. No queue, no SessionManager — one
+// invocation, so every run is isolated. No queue, no SessionManager - one
 // run per microVM.
 const app = new BedrockAgentCoreApp({
   config: {

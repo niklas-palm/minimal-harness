@@ -1,10 +1,10 @@
 // The 14 base tools available to every agent.
 //
 // Every tool wraps its body in try/catch and returns {error, hint} on
-// failure — never throws. The agent reads the hint and adapts.
+// failure - never throws. The agent reads the hint and adapts.
 //
 // Tool names use snake_case and parameter names match what the model
-// is trained to emit (read_file, old_text, etc.) — that surface is
+// is trained to emit (read_file, old_text, etc.) - that surface is
 // load-bearing for the prompt and shouldn't be camelCased.
 
 import { spawn } from 'node:child_process';
@@ -35,7 +35,7 @@ import { REGION, WORKSPACE_DIR as WORKSPACE } from './config.js';
 // rejects. The runtime serialisation handles undefined fields fine; this
 // thin re-typing of `tool()` widens the callback return so every tool can
 // keep its idiomatic union return type without per-call casting. Inputs
-// stay typed via the Zod schema — only the return is loosened.
+// stay typed via the Zod schema - only the return is loosened.
 
 type ToolFactory = <S extends z.ZodTypeAny>(config: {
   name: string;
@@ -519,7 +519,7 @@ Use this INSTEAD OF read_file() for any data file.`,
       if (ext === '.csv') {
         const text = readFileSync(fp, 'utf8');
         // Minimal CSV: split on newline, then on comma. Handles unquoted fields
-        // fine for previewing — for quoted CSVs the agent should use run_python.
+        // fine for previewing - for quoted CSVs the agent should use run_python.
         const allLines = text.replace(/\n$/, '').split('\n');
         const previewLines = allLines.slice(0, rows + 1);
         const parseRow = (line: string) => line.split(',');

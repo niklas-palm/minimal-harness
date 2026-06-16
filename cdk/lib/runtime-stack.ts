@@ -1,4 +1,4 @@
-// AgentCore CfnRuntime for the harness — the agent container plus the IAM
+// AgentCore CfnRuntime for the harness - the agent container plus the IAM
 // role it runs as. That's the whole stack: no memory, no OAuth, no trigger
 // Lambda. You invoke the runtime directly via the API (see the Makefile).
 import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib';

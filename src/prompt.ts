@@ -25,7 +25,7 @@ When you've completed the task, write a clear final answer as your last message.
 You have web_search and web_fetch. Use short, specific queries (1-6 words); after a search, follow up with web_fetch on a specific URL for full content. Search when information may have changed since training, you don't recognise an entity, or you need current data.
 
 ## Errors
-Tools never raise — they return either a normal result or {"error": "...", "hint": "..."}. When you see an error, read the hint, adjust, and try again. Don't stop on a single failed tool call unless it's blocking.
+Tools never raise - they return either a normal result or {"error": "...", "hint": "..."}. When you see an error, read the hint, adjust, and try again. Don't stop on a single failed tool call unless it's blocking.
 
 ## AWS
 You have read-only access to an AWS account via boto3 inside run_python. The AWS CLI is not installed.

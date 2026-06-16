@@ -1,6 +1,6 @@
 // Strands Agent factory for the harness.
 //
-// Each invocation builds a fresh Agent — no SessionManager, no shared state.
+// Each invocation builds a fresh Agent - no SessionManager, no shared state.
 // The agent gets the baseline toolset plus the skills plugin; nothing else.
 import { Agent, BedrockModel } from '@strands-agents/sdk';
 import { AgentSkills } from '@strands-agents/sdk/vended-plugins/skills';
@@ -37,7 +37,7 @@ export function buildAgent(sessionId: string): Agent {
 }
 
 // Stream the agent to completion, emitting one structured log line per
-// model message and tool result. Returns the agent's final text — the
+// model message and tool result. Returns the agent's final text - the
 // answer the caller sees.
 export async function runAgentStream(
   agent: Agent,
@@ -56,7 +56,7 @@ export async function runAgentStream(
           if (block?.type === 'textBlock' && block.text) {
             const text = String(block.text);
             emit('text', { session_id: sessionId, content: text });
-            finalText = text; // last assistant text wins — it's the answer
+            finalText = text; // last assistant text wins - it's the answer
           } else if (block?.type === 'toolUseBlock' && block.toolUseId && block.name) {
             emit('tool_input', {
               session_id: sessionId,

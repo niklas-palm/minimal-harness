@@ -3,7 +3,7 @@ name: ascii-banner
 description: Render a short piece of text as a large ASCII-art banner. Load this when the user asks for a banner, a big text header, or "ASCII art" of a word or short phrase.
 ---
 
-# Skill — ASCII banner
+# Skill - ASCII banner
 
 A tiny, self-contained illustration of a skill. When the user wants a word or
 short phrase rendered as a big ASCII-art banner, follow the steps below.
@@ -11,7 +11,7 @@ short phrase rendered as a big ASCII-art banner, follow the steps below.
 ## How to do it
 
 The runtime has Python available via `run_python`. Use the `pyfiglet`-free
-approach below — it depends on nothing beyond the standard library, so it
+approach below - it depends on nothing beyond the standard library, so it
 works in the sandbox without installing anything.
 
 1. Keep the text short (one or two words). Long input makes an unreadable banner.
@@ -44,6 +44,6 @@ print("\n".join(rows))
 4. Return the banner to the user inside a fenced code block so the alignment
    is preserved.
 
-That's it — this skill is here purely to show the mechanics: a folder with a
+That's it - this skill is here purely to show the mechanics: a folder with a
 SKILL.md under `skills/` is discovered automatically and offered to the agent,
 which loads these instructions on demand when the task calls for them.
