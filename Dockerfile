@@ -16,10 +16,7 @@ RUN pip install --no-cache-dir --break-system-packages \
       httpx==0.28.1 \
       pdfplumber==0.11.9 \
       openpyxl==3.1.5 \
-      pyarrow==24.0.0 \
-      pandas==3.0.3 \
-      numpy==2.4.6 \
-      matplotlib==3.10.9
+      pyarrow==24.0.0
 
 # tsx so we can run TypeScript directly — no compile step.
 RUN npm install -g --no-fund --no-audit tsx@4

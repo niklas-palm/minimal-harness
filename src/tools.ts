@@ -563,7 +563,7 @@ Use this INSTEAD OF read_file() for any data file.`,
       }
 
       if (ext === '.xlsx' || ext === '.xls' || ext === '.parquet') {
-        // Shell to python (pandas/openpyxl/pyarrow are pre-installed in the image).
+        // Shell to python (openpyxl/pyarrow are pre-installed in the image).
         // Keeps this file from pulling in two heavyweight npm libs.
         const pyCode = `
 import json, sys
@@ -584,8 +584,11 @@ if ext in ('.xlsx', '.xls'):
     print(json.dumps({"type": "excel", "sheet_name": sheet.title, "columns": columns, "column_count": len(columns), "preview_rows": len(data), "data": data}))
 elif ext == '.parquet':
     import pyarrow.parquet as pq
-    df = pq.read_table(fp).to_pandas()
-    print(json.dumps({"type": "parquet", "total_rows": len(df), "columns": list(df.columns), "column_count": len(df.columns), "preview_rows": min(rows, len(df)), "data": df.head(rows).astype(str).values.tolist()}))
+    table = pq.read_table(fp)
+    columns = table.column_names
+    head = table.slice(0, rows).to_pylist()
+    data = [[None if row.get(c) is None else str(row[c]) for c in columns] for row in head]
+    print(json.dumps({"type": "parquet", "total_rows": table.num_rows, "columns": columns, "column_count": len(columns), "preview_rows": len(data), "data": data}))
 `;
         const r = await runChild('python3', ['-c', pyCode], { timeoutMs: 60_000 });
         if (r.code !== 0) {
@@ -762,7 +765,7 @@ const runPython = tool({
   name: 'run_python',
   description: `Execute Python code for data analysis, processing, or visualisation.
 
-Pre-installed: pandas, numpy, matplotlib, boto3, httpx, pdfplumber, openpyxl, pyarrow.
+Pre-installed: boto3, httpx, pdfplumber, openpyxl, pyarrow.
 Use print() to surface results. Use boto3 for read-only AWS calls.`,
   inputSchema: z.object({
     code: z
