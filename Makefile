@@ -86,7 +86,7 @@ invoke:
 	  --payload '{"prompt":"$(PROMPT)"}' \
 	  /dev/stdout
 	@echo
-	@echo "agent runs asynchronously — the call returns 'accepted'; watch 'make logs'"
+	@echo "agent runs asynchronously, the call returns 'accepted'. watch 'make logs'"
 	@echo "for progress and the final answer (CloudWatch can lag a minute on a cold runtime)."
 
 # The runtime's log group is keyed by its full id (e.g. harness-1ugjfL3pFs),
@@ -95,4 +95,5 @@ RUNTIME_ID = $(shell echo "$(RUNTIME_ARN)" | sed 's|.*runtime/||')
 LOG_GROUP  = /aws/bedrock-agentcore/runtimes/$(RUNTIME_ID)-DEFAULT
 
 logs:
-	@aws logs tail "$(LOG_GROUP)" --region $(REGION) --since 10m --follow
+	@aws logs tail "$(LOG_GROUP)" --region $(REGION) --since 10m --follow \
+	  | python3 scripts/format-logs.py
