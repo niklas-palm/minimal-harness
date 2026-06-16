@@ -77,11 +77,13 @@ SESSION_ID = $(shell uuidgen | tr -d - | tr A-Z a-z)$(shell uuidgen | tr -d - | 
 PROMPT ?= Say hello and tell me what tools you have.
 
 invoke:
-	@echo "invoking $(RUNTIME_ARN)"
-	@aws bedrock-agentcore invoke-agent-runtime --region $(REGION) \
+	@SID="$(SESSION_ID)"; \
+	echo "invoking $(RUNTIME_ARN)"; \
+	echo "session: $$SID  (first 8: $${SID:0:8})"; \
+	aws bedrock-agentcore invoke-agent-runtime --region $(REGION) \
 	  --cli-binary-format raw-in-base64-out \
 	  --agent-runtime-arn "$(RUNTIME_ARN)" \
-	  --runtime-session-id "$(SESSION_ID)" \
+	  --runtime-session-id "$$SID" \
 	  --content-type application/json \
 	  --payload '{"prompt":"$(PROMPT)"}' \
 	  /dev/stdout
@@ -94,6 +96,14 @@ invoke:
 RUNTIME_ID = $(shell echo "$(RUNTIME_ARN)" | sed 's|.*runtime/||')
 LOG_GROUP  = /aws/bedrock-agentcore/runtimes/$(RUNTIME_ID)-DEFAULT
 
+# Default: print the last 30 min grouped by session id, then exit.
+# `make logs FOLLOW=1` streams live instead (ungrouped, one line per event).
+FOLLOW ?=
 logs:
-	@aws logs tail "$(LOG_GROUP)" --region $(REGION) --since 10m --follow \
+ifeq ($(FOLLOW),)
+	@aws logs tail "$(LOG_GROUP)" --region $(REGION) --since 30m \
 	  | python3 scripts/format-logs.py
+else
+	@aws logs tail "$(LOG_GROUP)" --region $(REGION) --since 30m --follow \
+	  | python3 scripts/format-logs.py --stream
+endif
