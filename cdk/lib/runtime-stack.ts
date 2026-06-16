@@ -7,7 +7,11 @@ import { ManagedPolicy, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-
 import { Construct } from 'constructs';
 
 const AGENTCORE_PRINCIPAL = 'bedrock-agentcore.amazonaws.com';
-const IDLE_TIMEOUT_SECONDS = 900;
+// After this many seconds idle, AgentCore terminates the microVM and all its
+// state. This sample doesn't persist anything across invocations, so we keep
+// it short. Raise it (or add a session manager) if you need state to survive
+// longer between calls — see the blog's "what I'd add" section.
+const IDLE_TIMEOUT_SECONDS = 120;
 
 export interface RuntimeStackProps extends StackProps {
   /** ECR image tag (content hash from the Makefile, written to a JSON file). */
