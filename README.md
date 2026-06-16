@@ -1,22 +1,23 @@
 # harness
 
-**A minimal code agent on AWS Bedrock AgentCore Runtime.** Give it a prompt;
-it runs autonomously in an isolated microVM — reading and writing files,
-running shell and Python, searching the web — and works the task to
-completion. You invoke it asynchronously over the API and watch it work in
-CloudWatch.
+**A minimal agent harness on AWS Bedrock AgentCore Runtime.** It's a code
+agent (the loop plus a baseline toolset) running on a managed runtime that
+invokes it. Give it a prompt and it runs autonomously in an isolated microVM,
+reading and writing files, running shell and Python, and searching the web,
+working the task to completion. You invoke it asynchronously over the API and
+watch it work in CloudWatch.
 
 It's built on the [Strands Agents SDK](https://github.com/strands-agents)
-(TypeScript) and is deliberately small. The point isn't the feature list —
-it's to show *what a code agent actually is* and *how little it takes to run
-one on managed infrastructure*: no Slack, no memory, no OAuth, just the agent
-and the runtime it lives in.
+(TypeScript) and is deliberately small. The point isn't the feature list,
+it's to show *what a minimal harness actually is* and *how little it takes to
+run one on managed infrastructure*: no Slack, no memory, no OAuth, just the
+code agent and the runtime it lives in.
 
 ```
 make invoke PROMPT='compute the 15th Fibonacci number'
         │
         ▼  InvokeAgentRuntime  (returns immediately: "accepted")
-   AgentCore Runtime — a fresh, isolated microVM per session
+   AgentCore Runtime - a fresh, isolated microVM per session
         │  server.ts → buildAgent() → agent.stream()
         │  · the model decides to call run_python
         │  · writes + runs code in /workspace, reads the result
@@ -29,28 +30,28 @@ make invoke PROMPT='compute the 15th Fibonacci number'
 
 **A code agent, not a tool-calling agent.** Most agents are handed a fixed
 set of narrow tools (`get_order`, `send_email`) and can only do what those
-tools allow. This one is handed *general* tools — a shell, a Python
-interpreter, a filesystem — so it writes and runs its own code to get a job
-done. You don't pre-build a tool per task; the agent composes the capability
+tools allow. This one is handed *general* tools (a shell, a Python
+interpreter, a filesystem) so it writes and runs its own code to get a job
+done. You don't pre-build a tool per task, the agent composes the capability
 on demand. `run_python` is the tool that makes it a code agent.
 
 **One isolated microVM per session.** AgentCore Runtime scopes every
 invocation to a `runtimeSessionId`, and each one gets its own microVM with
 isolated compute, memory and filesystem. No two callers ever share an
-environment — which is exactly what makes it safe to hand the agent a raw
+environment, which is exactly what makes it safe to hand the agent a raw
 shell. Re-using a session id routes back to the same microVM (until it idles
-out); the sample uses a fresh id per call, so every run is clean.
+out), and the sample uses a fresh id per call, so every run is clean.
 
 **Asynchronous by design.** The invoke returns `accepted` immediately rather
-than blocking — the agent may run for minutes, and its progress and final
+than blocking, since the agent may run for minutes. Its progress and final
 answer are emitted as structured JSON lines to CloudWatch. The runtime sits
 behind an API, so the same agent can be triggered from anywhere: a Slack
 mention, a CloudWatch alarm, a PR webhook, or just the CLI as it is here.
 
-**Ephemeral state.** Nothing persists across invocations — once a session
+**Ephemeral state.** Nothing persists across invocations. Once a session
 idles out, the microVM and its filesystem are gone. That's intentional for a
-sample; to keep state longer you'd raise the idle timeout or externalise it
-(e.g. AgentCore Memory).
+sample, and to keep state longer you'd raise the idle timeout or externalise
+it (e.g. AgentCore Memory).
 
 ---
 
@@ -66,15 +67,15 @@ sample; to keep state longer you'd raise the idle timeout or externalise it
 | Data & media | `preview_data` `preview_file` `view_image` |
 | Web | `web_search` `web_fetch` |
 
-Every tool returns either a normal result or `{error, hint}` — it never
+Every tool returns either a normal result or `{error, hint}`, it never
 throws, so the agent reads the hint and adapts. They're deliberately simple
-to read; harden them (output caps, tighter sandboxing) before production use.
+to read, so harden them (output caps, tighter sandboxing) before production use.
 
-**Skills.** Beyond tools, the agent can load *skills* — folders under
+**Skills.** Beyond tools, the agent can load *skills*, which are folders under
 `skills/` each containing a `SKILL.md`. Strands lists them in the system
 prompt and the agent pulls in a skill's full instructions on demand
 (progressive disclosure). Drop in a new folder and it's picked up
-automatically; see `skills/ascii-banner/` for a worked example.
+automatically, and there's a worked example in `skills/ascii-banner/`.
 
 ---
 
@@ -83,8 +84,8 @@ automatically; see `skills/ascii-banner/` for a worked example.
 - An **AWS account** with credentials in your shell (`aws sts get-caller-identity`
   succeeds) and **Bedrock model access** in `eu-north-1` for the default model
   (`global.anthropic.claude-opus-4-8`).
-- **Docker** with Buildx — the runtime image is ARM64; Buildx cross-builds it
-  from an x86 host.
+- **Docker** with Buildx. The runtime image is ARM64, and Buildx cross-builds
+  it from an x86 host.
 - **Node 22+** and **AWS CLI v2**.
 - A one-time CDK bootstrap: `npx cdk bootstrap aws://<account-id>/eu-north-1`.
 
@@ -105,7 +106,7 @@ make destroy                          # tear it all down
 ```
 
 `make invoke` returns `accepted` immediately and the agent runs
-asynchronously — watch `make logs` for the tool calls and the final answer.
+asynchronously, so watch `make logs` for the tool calls and the final answer.
 CloudWatch delivery can lag a minute or two on a cold runtime.
 
 Override the model at deploy with
@@ -118,7 +119,7 @@ Override the model at deploy with
 
 ```
 src/
-  server.ts    AgentCore entrypoint — accepts {prompt}, runs the agent async
+  server.ts    AgentCore entrypoint, accepts {prompt} and runs the agent async
   agent.ts     buildAgent() (prompt + tools + skills + model) and the stream loop
   tools.ts     the 14 baseline tools
   config.ts    single source of runtime config (fails loud on missing required vars)
