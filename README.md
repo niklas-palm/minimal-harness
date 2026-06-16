@@ -1,9 +1,9 @@
 # harness
 
-A minimal **code agent** on AWS Bedrock AgentCore Runtime. You invoke it
-asynchronously via the API with a prompt; it runs in an isolated microVM
-with a sandboxed toolset — reading/writing files, running shell and Python,
-searching the web — and works the task to completion. Progress and the final
+A minimal **code-agent harness** example on AWS Bedrock AgentCore. You invoke it
+asynchronously via the API with a prompt and it runs in an isolated microVM
+with a baseline toolset: reading/writing files, running shell and Python,
+searching the web. It works on its task until completion. Progress and the final
 answer land in CloudWatch.
 
 It's built on the [Strands Agents SDK](https://github.com/strands-agents)
@@ -32,17 +32,14 @@ src/
   agent.ts     buildAgent() (prompt + tools + model) and the stream loop
   config.ts    single source of runtime config (loud on missing required vars)
   tools.ts     the 14 base tools (files, shell, run_python, web, data preview)
-  prompt.ts    the system prompt   emit.ts  JSON-line stdout logger
-cdk/
+  prompt.ts    the system prompt   
+  emit.ts      JSON-line stdout logger
+cdk/s
   bin/harness.ts        CDK app
   lib/runtime-stack.ts  the only stack: CfnRuntime + its IAM role
 Dockerfile     the ARM64 runtime image
 Makefile       install / deploy / invoke / logs
 ```
-
-The agent is granted 14 tools; the interesting one is **`run_python`**,
-which is what makes this a *code agent* — it writes and executes its own code
-rather than calling pre-built per-task tools.
 
 ---
 
@@ -65,7 +62,7 @@ Everything runs in `eu-north-1` and that isn't configurable (see `src/config.ts`
 make install                          # root + cdk deps
 make deploy                           # build + push the ARM64 image, then cdk deploy
 
-make invoke PROMPT='Use run_python to compute 7 factorial and tell me the number.'
+make invoke PROMPT='Compute 7 factorial and tell me the number.'
 make logs                             # tail the runtime's CloudWatch logs
 
 make destroy                          # tear it all down

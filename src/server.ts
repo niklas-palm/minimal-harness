@@ -1,7 +1,13 @@
 import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
+import { setupTracer } from '@strands-agents/sdk/telemetry';
 
 import { buildAgent, runAgentStream } from './agent.js';
 import { emit } from './emit.js';
+
+// Emit OpenTelemetry traces (agent loop, model calls, tool calls) over OTLP.
+// The endpoint + headers come from OTEL_* env vars set on the runtime, which
+// AgentCore Observability points at CloudWatch. No-op locally if unset.
+setupTracer({ exporters: { otlp: true } });
 
 // One AgentCore microVM per runtimeSessionId. We use a fresh sessionId per
 // invocation, so every run is isolated. No queue, no SessionManager — one
