@@ -10,12 +10,12 @@ short phrase rendered as a big ASCII-art banner, follow the steps below.
 
 ## How to do it
 
-The runtime has Python available via `run_python`. Use the `pyfiglet`-free
+The runtime has Python available via `bash` (`python3`). Use the `pyfiglet`-free
 approach below - it depends on nothing beyond the standard library, so it
 works in the sandbox without installing anything.
 
 1. Keep the text short (one or two words). Long input makes an unreadable banner.
-2. Run the following with `run_python`, substituting the text:
+2. Write the following to a file and run it with `bash` (`python3 banner.py`), substituting the text:
 
 ```python
 # A minimal 5-row block font covering A-Z, 0-9 and space.
