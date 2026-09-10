@@ -1,14 +1,20 @@
 // Strands Agent factory for the harness.
 //
 // Each invocation builds a fresh Agent - no SessionManager, no shared state.
-// The agent gets the baseline toolset plus the skills plugin; nothing else.
+// The agent gets the four base tools, web_fetch, web_search when the stack
+// enabled it, and the skills plugin; nothing else.
 import { Agent, BedrockModel } from '@strands-agents/sdk';
 import { AgentSkills } from '@strands-agents/sdk/vended-plugins/skills';
 
-import { BEDROCK_MODEL_ID, REGION, SKILLS_DIR } from './config.js';
+import { BEDROCK_MODEL_ID, REGION, SKILLS_DIR, WEB_SEARCH_GATEWAY_URL } from './config.js';
 import { emit } from './emit.js';
 import { SYSTEM_PROMPT } from './prompt.js';
-import { ALL_TOOLS } from './tools.js';
+import { TOOLS } from './tools.js';
+import { webFetch, webSearch } from './web.js';
+
+// Hard stop for runaway loops. One run should never need this many model
+// calls; hitting it ends the run with whatever the agent has so far.
+const MAX_TURNS = 50;
 
 export function buildAgent(sessionId: string): Agent {
   // Progressive-disclosure skills. The plugin scans SKILLS_DIR, injects an
@@ -16,6 +22,8 @@ export function buildAgent(sessionId: string): Agent {
   // tool the agent calls to load a skill's full instructions on demand. Drop
   // a new folder with a SKILL.md into skills/ and it's picked up automatically.
   const skillsPlugin = new AgentSkills({ skills: [SKILLS_DIR] });
+
+  const tools = [...TOOLS, webFetch, ...(WEB_SEARCH_GATEWAY_URL ? [webSearch] : [])];
 
   const agent = new Agent({
     name: 'harness',
@@ -25,11 +33,12 @@ export function buildAgent(sessionId: string): Agent {
       maxTokens: 25000,
       cacheConfig: { strategy: 'auto' },
     }),
-
-    tools: [...ALL_TOOLS] as any,
+    tools: tools as any,
     plugins: [skillsPlugin],
     systemPrompt: SYSTEM_PROMPT,
     printer: false,
+    // Stamped on every span, so traces group by session in the console.
+    traceAttributes: { 'session.id': sessionId },
   });
 
   emit('session_start', { session_id: sessionId, model_id: BEDROCK_MODEL_ID });
@@ -46,7 +55,10 @@ export async function runAgentStream(
 ): Promise<string> {
   let finalText = '';
 
-  const stream = agent.stream(prompt as any, { invocationState: { session_id: sessionId } });
+  const stream = agent.stream(prompt as any, {
+    invocationState: { session_id: sessionId },
+    limits: { turns: MAX_TURNS },
+  });
 
   try {
     for await (const ev of stream) {

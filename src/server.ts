@@ -1,7 +1,16 @@
+// The AgentCore Runtime entrypoint. Accepts {prompt}, starts the agent as a
+// background task and returns "accepted" immediately; progress and the final
+// answer go to stdout as JSON lines (and so to CloudWatch). One microVM per
+// session id, so nothing here is shared between runs.
 import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 
 import { buildAgent, runAgentStream } from './agent.js';
+import { TRACING } from './config.js';
 import { emit } from './emit.js';
+import { flushTraces, startTracing } from './tracing.js';
+
+// Register the tracer before anything creates spans.
+if (TRACING) startTracing();
 
 // One AgentCore microVM per runtimeSessionId. We use a fresh sessionId per
 // invocation, so every run is isolated. No queue, no SessionManager - one
@@ -56,6 +65,7 @@ async function run(args: RunArgs): Promise<void> {
   const agent = buildAgent(args.sessionId);
   const answer = await runAgentStream(agent, args.prompt, args.sessionId);
   emit('session_end', { session_id: args.sessionId, answer });
+  await flushTraces();
 }
 
 function reportTaskError(err: unknown): void {
