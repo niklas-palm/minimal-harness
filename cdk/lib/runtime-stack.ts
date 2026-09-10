@@ -3,12 +3,21 @@
 // fronting AWS's managed web search connector. That's the whole stack: no
 // memory, no OAuth, no trigger Lambda. You invoke the runtime directly via the
 // API (see the Makefile).
-import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib';
-import { CfnGateway, CfnGatewayTarget, CfnRuntime } from 'aws-cdk-lib/aws-bedrockagentcore';
-import { ManagedPolicy, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
-import { Construct } from 'constructs';
+import { CfnOutput, Stack, StackProps } from "aws-cdk-lib";
+import {
+  CfnGateway,
+  CfnGatewayTarget,
+  CfnRuntime,
+} from "aws-cdk-lib/aws-bedrockagentcore";
+import {
+  ManagedPolicy,
+  PolicyStatement,
+  Role,
+  ServicePrincipal,
+} from "aws-cdk-lib/aws-iam";
+import { Construct } from "constructs";
 
-const AGENTCORE_PRINCIPAL = 'bedrock-agentcore.amazonaws.com';
+const AGENTCORE_PRINCIPAL = "bedrock-agentcore.amazonaws.com";
 // After this many seconds idle, AgentCore terminates the microVM and all its
 // state. This sample doesn't persist anything across invocations, so we keep
 // it short. Raise it (or externalise state, e.g. via AgentCore Memory) if you
@@ -41,16 +50,23 @@ export class RuntimeStack extends Stack {
     // ReadOnlyAccess gives the agent broad read access to the account (handy
     // for the "ask boto3 about my account" use case). Everything below adds
     // the few write/invoke actions ReadOnlyAccess doesn't cover.
-    const role = new Role(this, 'RuntimeRole', {
+    const role = new Role(this, "RuntimeRole", {
       assumedBy: new ServicePrincipal(AGENTCORE_PRINCIPAL),
-      description: 'Runtime role for the harness AgentCore runtime.',
-      managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName('ReadOnlyAccess')],
+      description: "Runtime role for the harness AgentCore runtime.",
+      managedPolicies: [
+        ManagedPolicy.fromAwsManagedPolicyName("ReadOnlyAccess"),
+      ],
     });
 
     // CloudWatch logs the runtime auto-creates per session.
     role.addToPolicy(
       new PolicyStatement({
-        actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents', 'logs:DescribeLogStreams'],
+        actions: [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams",
+        ],
         resources: [runtimeLogGroupArn, `${runtimeLogGroupArn}:log-stream:*`],
       }),
     );
@@ -61,47 +77,60 @@ export class RuntimeStack extends Stack {
     role.addToPolicy(
       new PolicyStatement({
         actions: [
-          'bedrock:InvokeModel',
-          'bedrock:InvokeModelWithResponseStream',
-          'bedrock:Converse',
-          'bedrock:ConverseStream',
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream",
+          "bedrock:Converse",
+          "bedrock:ConverseStream",
         ],
-        resources: ['*'],
+        resources: ["*"],
       }),
     );
 
-    // Spans go to X-Ray's OTLP endpoint (see src/tracing.ts). X-Ray has no
-    // resource-level permissions.
+    // The container reads config.json for everything else; only deploy outputs
+    // and the observability switch travel as env vars.
+    const environmentVariables: Record<string, string> = {};
+
+    // Observability. AWS's OpenTelemetry distro (loaded in the Dockerfile CMD)
+    // exports Strands' spans and metrics to X-Ray and CloudWatch when
+    // AGENT_OBSERVABILITY_ENABLED is set; when tracing is off we flip the
+    // standard OTEL_SDK_DISABLED kill switch so the same image is a no-op.
     if (tracing) {
+      environmentVariables.AGENT_OBSERVABILITY_ENABLED = "true";
       role.addToPolicy(
         new PolicyStatement({
-          actions: ['xray:PutTraceSegments', 'xray:PutSpans', 'xray:PutSpansForIndexing'],
-          resources: ['*'],
+          actions: [
+            "xray:PutTraceSegments",
+            "xray:PutSpans",
+            "xray:PutSpansForIndexing",
+          ],
+          resources: ["*"],
         }),
       );
+    } else {
+      environmentVariables.OTEL_SDK_DISABLED = "true";
     }
 
-    // The container reads config.json for everything else; only a deploy
-    // output needs to travel as an env var.
-    const environmentVariables: Record<string, string> = {};
     if (webSearch) {
-      environmentVariables.WEB_SEARCH_GATEWAY_URL = this.addWebSearchGateway(role);
+      environmentVariables.WEB_SEARCH_GATEWAY_URL =
+        this.addWebSearchGateway(role);
     }
 
-    const runtime = new CfnRuntime(this, 'HarnessRuntime', {
-      agentRuntimeName: 'harness',
-      description: 'Minimal Strands code agent on AgentCore',
+    const runtime = new CfnRuntime(this, "HarnessRuntime", {
+      agentRuntimeName: "harness",
+      description: "Minimal Strands code agent on AgentCore",
       roleArn: role.roleArn,
       agentRuntimeArtifact: { containerConfiguration: { containerUri } },
-      networkConfiguration: { networkMode: 'PUBLIC' },
-      protocolConfiguration: 'HTTP',
+      networkConfiguration: { networkMode: "PUBLIC" },
+      protocolConfiguration: "HTTP",
       environmentVariables,
-      lifecycleConfiguration: { idleRuntimeSessionTimeout: IDLE_TIMEOUT_SECONDS },
+      lifecycleConfiguration: {
+        idleRuntimeSessionTimeout: IDLE_TIMEOUT_SECONDS,
+      },
     });
 
     this.runtimeArn = runtime.attrAgentRuntimeArn;
 
-    new CfnOutput(this, 'RuntimeArn', { value: this.runtimeArn });
+    new CfnOutput(this, "RuntimeArn", { value: this.runtimeArn });
   }
 
   // An AgentCore Gateway with the AWS-managed `web-search` connector as its
@@ -114,58 +143,67 @@ export class RuntimeStack extends Stack {
     // The service role the gateway assumes to call the connector. Its trust
     // policy is scoped to gateways in this account; the ARN has to be a
     // pattern because the gateway doesn't exist yet when the role is made.
-    const gatewayRole = new Role(this, 'WebSearchGatewayRole', {
+    const gatewayRole = new Role(this, "WebSearchGatewayRole", {
       assumedBy: new ServicePrincipal(AGENTCORE_PRINCIPAL, {
         conditions: {
-          StringEquals: { 'aws:SourceAccount': account },
-          ArnLike: { 'aws:SourceArn': `arn:aws:bedrock-agentcore:${region}:${account}:gateway/*` },
+          StringEquals: { "aws:SourceAccount": account },
+          ArnLike: {
+            "aws:SourceArn": `arn:aws:bedrock-agentcore:${region}:${account}:gateway/*`,
+          },
         },
       }),
-      description: 'Assumed by the harness web search gateway to call the managed connector.',
+      description:
+        "Assumed by the harness web search gateway to call the managed connector.",
     });
     gatewayRole.addToPolicy(
       new PolicyStatement({
-        actions: ['bedrock-agentcore:InvokeWebSearch'],
-        resources: [`arn:aws:bedrock-agentcore:${region}:aws:tool/web-search.v1`],
+        actions: ["bedrock-agentcore:InvokeWebSearch"],
+        resources: [
+          `arn:aws:bedrock-agentcore:${region}:aws:tool/web-search.v1`,
+        ],
       }),
     );
     gatewayRole.addToPolicy(
       new PolicyStatement({
-        actions: ['bedrock-agentcore:InvokeGateway'],
+        actions: ["bedrock-agentcore:InvokeGateway"],
         resources: [`arn:aws:bedrock-agentcore:${region}:${account}:gateway/*`],
       }),
     );
 
-    const gateway = new CfnGateway(this, 'WebSearchGateway', {
-      name: 'harness-web-search',
-      authorizerType: 'AWS_IAM',
-      protocolType: 'MCP',
-      protocolConfiguration: { mcp: { supportedVersions: ['2025-03-26'] } },
+    const gateway = new CfnGateway(this, "WebSearchGateway", {
+      name: "harness-web-search",
+      authorizerType: "AWS_IAM",
+      protocolType: "MCP",
+      protocolConfiguration: { mcp: { supportedVersions: ["2025-03-26"] } },
       roleArn: gatewayRole.roleArn,
     });
     // Target name is part of the tool name the agent calls: web-search___WebSearch.
-    new CfnGatewayTarget(this, 'WebSearchTarget', {
+    new CfnGatewayTarget(this, "WebSearchTarget", {
       gatewayIdentifier: gateway.attrGatewayIdentifier,
-      name: 'web-search',
+      name: "web-search",
       targetConfiguration: {
         mcp: {
           connector: {
-            source: { connectorId: 'web-search' },
-            configurations: [{ name: 'WebSearch', parameterValues: {} }],
+            source: { connectorId: "web-search" },
+            configurations: [{ name: "WebSearch", parameterValues: {} }],
           },
         },
       },
-      credentialProviderConfigurations: [{ credentialProviderType: 'GATEWAY_IAM_ROLE' }],
+      credentialProviderConfigurations: [
+        { credentialProviderType: "GATEWAY_IAM_ROLE" },
+      ],
     });
 
     runtimeRole.addToPolicy(
       new PolicyStatement({
-        actions: ['bedrock-agentcore:InvokeGateway'],
+        actions: ["bedrock-agentcore:InvokeGateway"],
         resources: [gateway.attrGatewayArn],
       }),
     );
 
-    new CfnOutput(this, 'WebSearchGatewayUrl', { value: gateway.attrGatewayUrl });
+    new CfnOutput(this, "WebSearchGatewayUrl", {
+      value: gateway.attrGatewayUrl,
+    });
     return gateway.attrGatewayUrl;
   }
 }

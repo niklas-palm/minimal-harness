@@ -120,8 +120,7 @@ Makefile, the CDK stack and the running container alike:
   "region": "eu-west-1",
   "bedrockModelId": "global.anthropic.claude-opus-4-8",
   "webSearch": true,
-  "tracing": true,
-  "redactTraceContent": true
+  "tracing": true
 }
 ```
 
@@ -134,22 +133,20 @@ URL, because it only exists after deploy.
 ## Tracing
 
 A harness you can't observe isn't much of a harness, so tracing is on by
-default. Strands emits OpenTelemetry spans for the agent loop, every model
-call and every tool call. `src/tracing.ts` registers a tracer provider that
-exports them, SigV4-signed, to X-Ray's OTLP endpoint, and CloudWatch
-Transaction Search turns them into the Agent, Session and Trace views in
-**CloudWatch > GenAI Observability**. Every span carries `session.id`, so one
-invocation is one trace and a session groups its traces, and the sampler is
-always-on: every session is exported, not a sample of them.
+default. Strands emits OpenTelemetry spans for the agent loop, every model call
+and every tool call, and token-usage metrics alongside them. Rather than wire
+an exporter by hand, the container loads AWS's OpenTelemetry distro at startup
+(the `--import .../register` in the Dockerfile `CMD`). It signs the export to
+X-Ray, routes it to the right place, tags the resource as an agent, and turns
+Strands' metrics into CloudWatch metrics. CloudWatch Transaction Search then
+fills the Agent, Session and Trace views in
+**CloudWatch > GenAI Observability**, and the token-usage tile reads the
+metrics. `server.ts` puts `session.id` into OpenTelemetry baggage for the run,
+which the distro copies onto every span, so a session groups its traces.
 
-The console's Agent and Session views need three things AWS's own ADOT distro
-would add for you, so `tracing.ts` does them itself: the resource is marked
-`aws.service.type = gen_ai_agent`, `session.id` goes on every span (Strands
-only sets it on the root), and spans are delivered to the agent's own log group
-(the `spans` stream AgentCore creates under
-`/aws/bedrock-agentcore/runtimes/<agent>-DEFAULT`) rather than the shared
-`aws/spans` group. Without those, traces show up under Transaction Search but
-the agent views stay empty.
+The distro is a no-op unless `AGENT_OBSERVABILITY_ENABLED` is set, which the
+stack does when `tracing` is true in `config.json`; when it's false the stack
+sets `OTEL_SDK_DISABLED` instead, so the same image ships nothing.
 
 One-time account setup, per region:
 
@@ -157,26 +154,27 @@ One-time account setup, per region:
 make observability.enable
 ```
 
-That does three things: lets X-Ray write to CloudWatch Logs (the shared
-`aws/spans` group and every AgentCore agent's own log group), points X-Ray at
-CloudWatch Logs, and sets the indexing rule to 100% so every trace is
-searchable (the default indexes a sample). It's deliberately not part of the
-stack: the setting is shared by every agent in the account and region, so
-tearing down one stack shouldn't switch it off. Activation takes a few
-minutes; until it's active, X-Ray rejects the export and the run logs an
-`error` event saying so. Safe to run again.
+It lets X-Ray write to CloudWatch Logs (the shared `aws/spans` group and every
+AgentCore agent's own log group), points X-Ray at CloudWatch Logs, and sets the
+indexing rule to 100% so every trace is searchable (the default indexes a
+sample). It's deliberately not part of the stack: the setting is shared by
+every agent in the account and region, so tearing down one stack shouldn't
+switch it off. Activation takes a few minutes.
 
-**Redaction.** Strands records what was said on the spans: messages as span
-events, tool arguments and results as attributes. With
-`redactTraceContent: true` (the default) those are stripped before export, so
-a trace shows the shape of a run (tools called, tokens, timings) but not the
-prompts, answers or tool payloads. Set it to `false` when you're debugging and
-want the full content in the trace.
+**On the ESM caveat you'll read about.** AWS's docs warn that the Node distro's
+auto-instrumentation only patches CommonJS `require()` and does nothing under
+ESM. That's about instrumenting third-party libraries. Strands emits through
+the global OpenTelemetry API, which the distro configures regardless, so
+loading `.../register` from our ESM entrypoint works, which is what the
+Dockerfile does.
 
-Why not AWS's Node auto-instrumentation: it patches `require()` and only works
-for CommonJS builds. This harness is ESM under `tsx`, where it silently emits
-nothing, which is exactly the failure mode to avoid in something meant to be
-observable.
+**A note on span content.** In agent mode the distro records what was said,
+prompts, model output and tool payloads, as span events, same as any
+ADOT-instrumented agent, and it's visible in the trace detail. This sample
+leaves that on. If you don't want conversation content in your logs, the clean
+answer is a redacting exporter or a Strands option to stop recording it; the
+earlier version of this sample redacted content in a hand-rolled exporter,
+which is an option if you go back to signing the export yourself.
 
 ---
 
@@ -232,7 +230,6 @@ src/
   agent.ts       buildAgent() (prompt + tools + skills + model) and the stream loop
   tools.ts       the four base tools
   web.ts         web_fetch, and web_search (one signed POST to the gateway)
-  tracing.ts     OpenTelemetry provider + SigV4 exporter to X-Ray, optional redaction
   config.ts      reads config.json; the one place runtime config comes from
   prompt.ts      the system prompt
   emit.ts        JSON-line stdout logger

@@ -15,7 +15,7 @@
 // trained to emit (read_file, old_text, etc.) - that surface is load-bearing
 // for the prompt and shouldn't be camelCased.
 
-import { spawn } from 'node:child_process';
+import { spawn } from "node:child_process";
 import {
   closeSync,
   existsSync,
@@ -25,12 +25,12 @@ import {
   readSync,
   statSync,
   writeFileSync,
-} from 'node:fs';
-import { dirname, resolve as pathResolve } from 'node:path';
-import { tool as strandsTool } from '@strands-agents/sdk';
-import { z } from 'zod';
+} from "node:fs";
+import { dirname, resolve as pathResolve } from "node:path";
+import { tool as strandsTool } from "@strands-agents/sdk";
+import { z } from "zod";
 
-import { WORKSPACE_DIR as WORKSPACE } from './config.js';
+import { WORKSPACE_DIR as WORKSPACE } from "./config.js";
 
 // Tool bodies return `{...}|{error,hint}` unions that TS infers with implicit
 // `?: undefined` keys, which Strands' JSONValue rejects. Serialisation handles
@@ -56,7 +56,7 @@ const MAX_TIMEOUT_S = 300;
 // Resolve a path inside the workspace; refuse anything that escapes it.
 function safePath(rel: string): string {
   const p = pathResolve(WORKSPACE, rel);
-  if (p !== WORKSPACE && !p.startsWith(WORKSPACE + '/')) {
+  if (p !== WORKSPACE && !p.startsWith(WORKSPACE + "/")) {
     throw new Error(`path traversal not allowed; stay inside ${WORKSPACE}`);
   }
   return p;
@@ -65,7 +65,7 @@ function safePath(rel: string): string {
 // A NUL byte in the first 8 KB is a good enough "not a text file" signal.
 function isBinary(path: string): boolean {
   const buf = Buffer.alloc(8192);
-  const fd = openSync(path, 'r');
+  const fd = openSync(path, "r");
   try {
     const n = readSync(fd, buf, 0, buf.length, 0);
     return buf.subarray(0, n).includes(0);
@@ -95,7 +95,7 @@ const seen = new Set<string>();
 // --- tools ------------------------------------------------------------------
 
 const readFile = tool({
-  name: 'read_file',
+  name: "read_file",
   description: `Read a text file from the workspace.
 
 Returns the content with 1-indexed line numbers (cat -n format). Reads up to
@@ -106,9 +106,17 @@ For binary files, or files over 5 MB, use bash (head, tail, file, python3).
 Don't re-read a file just to verify an edit_file or write_file: those fail
 loudly if the change didn't apply.`,
   inputSchema: z.object({
-    path: z.string().describe('Path relative to the workspace.'),
-    offset: z.number().int().optional().describe('Line number to start from (1-indexed).'),
-    limit: z.number().int().optional().describe(`Number of lines to read (default ${MAX_LINES}).`),
+    path: z.string().describe("Path relative to the workspace."),
+    offset: z
+      .number()
+      .int()
+      .optional()
+      .describe("Line number to start from (1-indexed)."),
+    limit: z
+      .number()
+      .int()
+      .optional()
+      .describe(`Number of lines to read (default ${MAX_LINES}).`),
   }),
   callback: ({ path, offset, limit }) => {
     try {
@@ -116,30 +124,39 @@ loudly if the change didn't apply.`,
       if (!existsSync(fp)) {
         return {
           error: `file not found: ${path}`,
-          hint: 'check the path; use bash (ls) to explore',
+          hint: "check the path; use bash (ls) to explore",
         };
       }
       const stat = statSync(fp);
       if (stat.isDirectory()) {
-        return { error: `path is a directory: ${path}`, hint: 'use bash (ls) to list it' };
+        return {
+          error: `path is a directory: ${path}`,
+          hint: "use bash (ls) to list it",
+        };
       }
       if (stat.size > MAX_FILE_BYTES) {
         return {
           error: `file too large (${stat.size} bytes)`,
-          hint: 'use bash (head, tail, sed -n) instead',
+          hint: "use bash (head, tail, sed -n) instead",
         };
       }
       if (isBinary(fp)) {
-        return { error: 'binary file', hint: 'inspect it with bash (file, xxd, python3)' };
+        return {
+          error: "binary file",
+          hint: "inspect it with bash (file, xxd, python3)",
+        };
       }
-      const lines = readFileSync(fp, 'utf8').split('\n');
+      const lines = readFileSync(fp, "utf8").split("\n");
       seen.add(fp);
       const start = offset && offset >= 1 ? offset - 1 : 0;
       const selected = lines.slice(start, start + (limit ?? MAX_LINES));
       const width = String(start + selected.length).length;
       const numbered = selected
-        .map((ln, i) => `${String(start + i + 1).padStart(width)}\t${ln.slice(0, MAX_LINE_CHARS)}`)
-        .join('\n');
+        .map(
+          (ln, i) =>
+            `${String(start + i + 1).padStart(width)}\t${ln.slice(0, MAX_LINE_CHARS)}`,
+        )
+        .join("\n");
       return {
         content: numbered,
         total_lines: lines.length,
@@ -147,21 +164,21 @@ loudly if the change didn't apply.`,
         start_line: start + 1,
       };
     } catch (e) {
-      return errorResult(e, 'check the path and try again');
+      return errorResult(e, "check the path and try again");
     }
   },
 });
 
 const writeFile = tool({
-  name: 'write_file',
+  name: "write_file",
   description: `Write content to a new file, creating parent directories as needed.
 
 Use only for new files. write_file on an existing file overwrites it entirely
 and is refused unless you have read the file first; to change an existing
 file, use edit_file.`,
   inputSchema: z.object({
-    path: z.string().describe('Path relative to the workspace.'),
-    content: z.string().describe('Complete file content.'),
+    path: z.string().describe("Path relative to the workspace."),
+    content: z.string().describe("Complete file content."),
   }),
   callback: ({ path, content }) => {
     try {
@@ -169,21 +186,25 @@ file, use edit_file.`,
       if (existsSync(fp) && !seen.has(fp)) {
         return {
           error: `file exists and you haven't read it: ${path}`,
-          hint: 'read_file it first, or use edit_file',
+          hint: "read_file it first, or use edit_file",
         };
       }
       mkdirSync(dirname(fp), { recursive: true });
       writeFileSync(fp, content);
       seen.add(fp);
-      return { success: true, path, bytes_written: Buffer.byteLength(content, 'utf8') };
+      return {
+        success: true,
+        path,
+        bytes_written: Buffer.byteLength(content, "utf8"),
+      };
     } catch (e) {
-      return errorResult(e, 'check the path is valid and writable');
+      return errorResult(e, "check the path is valid and writable");
     }
   },
 });
 
 const editFile = tool({
-  name: 'edit_file',
+  name: "edit_file",
   description: `Edit a file by replacing an exact string match.
 
 You must read the file with read_file first; the edit is refused otherwise.
@@ -192,47 +213,59 @@ old_text must appear exactly once in the file, unless replace_all is set
 copying from read_file output, strip the line-number prefix (number + tab).
 new_text must differ from old_text.`,
   inputSchema: z.object({
-    path: z.string().describe('Path relative to the workspace.'),
-    old_text: z.string().describe('Exact text to find. Must be unique unless replace_all is set.'),
-    new_text: z.string().describe('Replacement text.'),
+    path: z.string().describe("Path relative to the workspace."),
+    old_text: z
+      .string()
+      .describe(
+        "Exact text to find. Must be unique unless replace_all is set.",
+      ),
+    new_text: z.string().describe("Replacement text."),
     replace_all: z
       .boolean()
       .optional()
-      .describe('Replace every occurrence instead of requiring a unique match.'),
+      .describe(
+        "Replace every occurrence instead of requiring a unique match.",
+      ),
   }),
   callback: ({ path, old_text, new_text, replace_all }) => {
     try {
       if (old_text === new_text) {
-        return { error: 'old_text and new_text are identical', hint: 'no-op edit rejected' };
+        return {
+          error: "old_text and new_text are identical",
+          hint: "no-op edit rejected",
+        };
       }
       const fp = safePath(path);
       if (!existsSync(fp) || !statSync(fp).isFile()) {
         return {
           error: `file not found: ${path}`,
-          hint: 'create it with write_file or check the path',
+          hint: "create it with write_file or check the path",
         };
       }
       if (!seen.has(fp)) {
         return {
           error: `you haven't read this file yet: ${path}`,
-          hint: 'read_file it first, then edit',
+          hint: "read_file it first, then edit",
         };
       }
       if (isBinary(fp)) {
-        return { error: 'binary file', hint: 'edit_file only works on text files' };
+        return {
+          error: "binary file",
+          hint: "edit_file only works on text files",
+        };
       }
-      const content = readFileSync(fp, 'utf8');
+      const content = readFileSync(fp, "utf8");
       const count = content.split(old_text).length - 1;
       if (count === 0) {
         return {
-          error: 'old_text not found in file',
-          hint: 'check whitespace and quoting, and drop any line-number prefix copied from read_file',
+          error: "old_text not found in file",
+          hint: "check whitespace and quoting, and drop any line-number prefix copied from read_file",
         };
       }
       if (!replace_all && count > 1) {
         return {
           error: `old_text matches ${count} locations - must be unique`,
-          hint: 'add surrounding context to make old_text unique, or set replace_all',
+          hint: "add surrounding context to make old_text unique, or set replace_all",
         };
       }
       const updated = replace_all
@@ -241,13 +274,13 @@ new_text must differ from old_text.`,
       writeFileSync(fp, updated);
       return { success: true, path, replacements: replace_all ? count : 1 };
     } catch (e) {
-      return errorResult(e, 'check the path and try again');
+      return errorResult(e, "check the path and try again");
     }
   },
 });
 
 const bash = tool({
-  name: 'bash',
+  name: "bash",
   description: `Run a bash command and return its stdout, stderr and exit code.
 
 Each call is a fresh shell in ${WORKSPACE}: cd, variables and other shell
@@ -263,7 +296,7 @@ max ${MAX_TIMEOUT_S}). For longer work, start it in the background
 ${MAX_OUTPUT_CHARS} characters per stream; redirect longer output to a file
 and read it with read_file.`,
   inputSchema: z.object({
-    command: z.string().describe('The command to run.'),
+    command: z.string().describe("The command to run."),
     timeout: z
       .number()
       .int()
@@ -279,31 +312,31 @@ and read it with read_file.`,
       // the whole tree, not just the shell. The child inherits this process's
       // environment on purpose: anything the server puts in process.env for
       // the run (credentials, a per-user token) is reachable from scripts.
-      const child = spawn('bash', ['-lc', command], {
+      const child = spawn("bash", ["-lc", command], {
         cwd: WORKSPACE,
         env: { ...process.env, HOME: WORKSPACE },
         detached: true,
       });
-      let stdout = '';
-      let stderr = '';
+      let stdout = "";
+      let stderr = "";
       let timedOut = false;
-      child.stdout.on('data', (d: Buffer) => (stdout += d));
-      child.stderr.on('data', (d: Buffer) => (stderr += d));
+      child.stdout.on("data", (d: Buffer) => (stdout += d));
+      child.stderr.on("data", (d: Buffer) => (stderr += d));
 
       const timer = setTimeout(() => {
         timedOut = true;
         try {
-          if (child.pid) process.kill(-child.pid, 'SIGKILL');
+          if (child.pid) process.kill(-child.pid, "SIGKILL");
         } catch {
           // already gone
         }
       }, seconds * 1000);
 
-      child.on('error', (e) => {
+      child.on("error", (e) => {
         clearTimeout(timer);
-        done(errorResult(e, 'check the command and try again'));
+        done(errorResult(e, "check the command and try again"));
       });
-      child.on('close', (code) => {
+      child.on("close", (code) => {
         clearTimeout(timer);
         done({
           stdout: truncate(stdout),

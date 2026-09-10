@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs';
+import { readFileSync } from "node:fs";
 
-import { App } from 'aws-cdk-lib';
+import { App } from "aws-cdk-lib";
 
-import config from '../../config.json';
-import { RuntimeStack } from '../lib/runtime-stack';
+import config from "../../config.json";
+import { RuntimeStack } from "../lib/runtime-stack";
 
 const app = new App();
 
@@ -16,18 +16,24 @@ const env = {
   region: config.region,
 };
 
-const REPO_NAME = 'harness';
+const REPO_NAME = "harness";
 
 // The Makefile builds + pushes the image and writes its content-hash tag to
 // a JSON file, then passes the path via context. Without it there's no image
 // to point the runtime at, so we skip the stack.
-const imageTagsFile = app.node.tryGetContext('imageTagsFile') as string | undefined;
+const imageTagsFile = app.node.tryGetContext("imageTagsFile") as
+  | string
+  | undefined;
 if (!imageTagsFile) {
-  throw new Error('imageTagsFile context not set - run via `make deploy`, not raw cdk');
+  throw new Error(
+    "imageTagsFile context not set - run via `make deploy`, not raw cdk",
+  );
 }
-const { imageTag } = JSON.parse(readFileSync(imageTagsFile, 'utf8')) as { imageTag: string };
+const { imageTag } = JSON.parse(readFileSync(imageTagsFile, "utf8")) as {
+  imageTag: string;
+};
 
-new RuntimeStack(app, 'Harness-Runtime', {
+new RuntimeStack(app, "Harness-Runtime", {
   env,
   imageTag,
   repoName: REPO_NAME,

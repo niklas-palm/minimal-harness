@@ -2,6 +2,5 @@
   "region": "eu-west-1",
   "bedrockModelId": "global.anthropic.claude-opus-4-8",
   "webSearch": true,
-  "tracing": true,
-  "redactTraceContent": true
+  "tracing": true
 }

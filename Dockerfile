@@ -13,7 +13,8 @@ RUN pip install --no-cache-dir --break-system-packages \
       boto3==1.43.23 \
       httpx==0.28.1
 
-# tsx so we can run TypeScript directly - no compile step.
+# tsx so we can run TypeScript directly - no compile step. Installed as a
+# project dep (see package.json) so the ADOT register hook can resolve it.
 RUN npm install -g --no-fund --no-audit tsx@4
 
 WORKDIR /app
@@ -34,4 +35,8 @@ RUN mkdir -p /workspace
 ENV NODE_NO_WARNINGS=1
 EXPOSE 8080
 
-CMD ["tsx", "src/server.ts"]
+# Load AWS's OpenTelemetry distro before the app so Strands' spans and metrics
+# land in the right places in AgentCore Observability (the agent + session
+# views, token usage). It's a no-op unless AGENT_OBSERVABILITY_ENABLED is set,
+# which the stack does when tracing is on (see cdk/lib/runtime-stack.ts).
+CMD ["node", "--import", "tsx", "--import", "@aws/aws-distro-opentelemetry-node-autoinstrumentation/register", "src/server.ts"]
