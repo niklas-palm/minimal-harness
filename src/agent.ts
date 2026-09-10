@@ -46,8 +46,6 @@ export function buildAgent(sessionId: string): Agent {
     plugins: [skillsPlugin],
     systemPrompt: SYSTEM_PROMPT,
     printer: false,
-    // Stamped on every span, so traces group by session in the console.
-    traceAttributes: { "session.id": sessionId },
   });
 
   emit("session_start", { session_id: sessionId, model_id: BEDROCK_MODEL_ID });
