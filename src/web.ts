@@ -62,10 +62,15 @@ async function fetchText(url: string) {
     throw new Error(`unsupported content type: ${type || 'unknown'}`);
   }
   const bytes = await res.arrayBuffer();
-  if (bytes.byteLength > MAX_FETCH_BYTES) throw new Error(`page too large (${bytes.byteLength} bytes)`);
+  if (bytes.byteLength > MAX_FETCH_BYTES)
+    throw new Error(`page too large (${bytes.byteLength} bytes)`);
   const raw = new TextDecoder().decode(bytes);
   const text = type.includes('html') ? htmlToText(raw) : raw;
-  return { url: res.url, content: text.slice(0, MAX_FETCH_CHARS), truncated: text.length > MAX_FETCH_CHARS };
+  return {
+    url: res.url,
+    content: text.slice(0, MAX_FETCH_CHARS),
+    truncated: text.length > MAX_FETCH_CHARS,
+  };
 }
 
 export const webFetch = tool({
@@ -82,7 +87,10 @@ only, no binaries.`,
     try {
       return await fetchText(url);
     } catch (e) {
-      return { error: e instanceof Error ? e.message : String(e), hint: 'check the url; some sites block automated fetches' };
+      return {
+        error: e instanceof Error ? e.message : String(e),
+        hint: 'check the url; some sites block automated fetches',
+      };
     }
   },
 });
@@ -125,7 +133,8 @@ async function search(query: string, maxResults: number): Promise<SearchResult[]
     body,
     signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
   });
-  if (!res.ok) throw new Error(`gateway returned ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  if (!res.ok)
+    throw new Error(`gateway returned ${res.status}: ${(await res.text()).slice(0, 300)}`);
 
   const rpc = (await res.json()) as {
     error?: { message?: string };
@@ -144,13 +153,22 @@ publication date. Use short, specific queries. To read a result in full,
 web_fetch its url.`,
   inputSchema: z.object({
     query: z.string().max(200).describe('Search query (200 chars max).'),
-    max_results: z.number().int().min(1).max(25).optional().describe('How many results to return (default 5).'),
+    max_results: z
+      .number()
+      .int()
+      .min(1)
+      .max(25)
+      .optional()
+      .describe('How many results to return (default 5).'),
   }),
   callback: async ({ query, max_results = 5 }) => {
     try {
       return { results: await search(query, max_results) };
     } catch (e) {
-      return { error: e instanceof Error ? e.message : String(e), hint: 'retry, or try a different query' };
+      return {
+        error: e instanceof Error ? e.message : String(e),
+        hint: 'retry, or try a different query',
+      };
     }
   },
 });

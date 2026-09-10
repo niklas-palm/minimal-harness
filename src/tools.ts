@@ -77,7 +77,10 @@ function isBinary(path: string): boolean {
 function truncate(s: string): string {
   if (s.length <= MAX_OUTPUT_CHARS) return s;
   const dropped = s.length - MAX_OUTPUT_CHARS;
-  return s.slice(0, MAX_OUTPUT_CHARS) + `\n... [truncated ${dropped} chars; redirect to a file and use read_file]`;
+  return (
+    s.slice(0, MAX_OUTPUT_CHARS) +
+    `\n... [truncated ${dropped} chars; redirect to a file and use read_file]`
+  );
 }
 
 function errorResult(e: unknown, hint: string) {
@@ -111,14 +114,20 @@ loudly if the change didn't apply.`,
     try {
       const fp = safePath(path);
       if (!existsSync(fp)) {
-        return { error: `file not found: ${path}`, hint: 'check the path; use bash (ls) to explore' };
+        return {
+          error: `file not found: ${path}`,
+          hint: 'check the path; use bash (ls) to explore',
+        };
       }
       const stat = statSync(fp);
       if (stat.isDirectory()) {
         return { error: `path is a directory: ${path}`, hint: 'use bash (ls) to list it' };
       }
       if (stat.size > MAX_FILE_BYTES) {
-        return { error: `file too large (${stat.size} bytes)`, hint: 'use bash (head, tail, sed -n) instead' };
+        return {
+          error: `file too large (${stat.size} bytes)`,
+          hint: 'use bash (head, tail, sed -n) instead',
+        };
       }
       if (isBinary(fp)) {
         return { error: 'binary file', hint: 'inspect it with bash (file, xxd, python3)' };
@@ -158,7 +167,10 @@ file, use edit_file.`,
     try {
       const fp = safePath(path);
       if (existsSync(fp) && !seen.has(fp)) {
-        return { error: `file exists and you haven't read it: ${path}`, hint: 'read_file it first, or use edit_file' };
+        return {
+          error: `file exists and you haven't read it: ${path}`,
+          hint: 'read_file it first, or use edit_file',
+        };
       }
       mkdirSync(dirname(fp), { recursive: true });
       writeFileSync(fp, content);
@@ -183,7 +195,10 @@ new_text must differ from old_text.`,
     path: z.string().describe('Path relative to the workspace.'),
     old_text: z.string().describe('Exact text to find. Must be unique unless replace_all is set.'),
     new_text: z.string().describe('Replacement text.'),
-    replace_all: z.boolean().optional().describe('Replace every occurrence instead of requiring a unique match.'),
+    replace_all: z
+      .boolean()
+      .optional()
+      .describe('Replace every occurrence instead of requiring a unique match.'),
   }),
   callback: ({ path, old_text, new_text, replace_all }) => {
     try {
@@ -192,10 +207,16 @@ new_text must differ from old_text.`,
       }
       const fp = safePath(path);
       if (!existsSync(fp) || !statSync(fp).isFile()) {
-        return { error: `file not found: ${path}`, hint: 'create it with write_file or check the path' };
+        return {
+          error: `file not found: ${path}`,
+          hint: 'create it with write_file or check the path',
+        };
       }
       if (!seen.has(fp)) {
-        return { error: `you haven't read this file yet: ${path}`, hint: 'read_file it first, then edit' };
+        return {
+          error: `you haven't read this file yet: ${path}`,
+          hint: 'read_file it first, then edit',
+        };
       }
       if (isBinary(fp)) {
         return { error: 'binary file', hint: 'edit_file only works on text files' };
@@ -214,7 +235,9 @@ new_text must differ from old_text.`,
           hint: 'add surrounding context to make old_text unique, or set replace_all',
         };
       }
-      const updated = replace_all ? content.split(old_text).join(new_text) : content.replace(old_text, new_text);
+      const updated = replace_all
+        ? content.split(old_text).join(new_text)
+        : content.replace(old_text, new_text);
       writeFileSync(fp, updated);
       return { success: true, path, replacements: replace_all ? count : 1 };
     } catch (e) {
@@ -245,7 +268,9 @@ and read it with read_file.`,
       .number()
       .int()
       .optional()
-      .describe(`Seconds before the command is killed (default ${DEFAULT_TIMEOUT_S}, max ${MAX_TIMEOUT_S}).`),
+      .describe(
+        `Seconds before the command is killed (default ${DEFAULT_TIMEOUT_S}, max ${MAX_TIMEOUT_S}).`,
+      ),
   }),
   callback: ({ command, timeout = DEFAULT_TIMEOUT_S }) =>
     new Promise((done) => {
@@ -284,7 +309,10 @@ and read it with read_file.`,
           stdout: truncate(stdout),
           stderr: truncate(stderr),
           exit_code: code ?? -1,
-          ...(timedOut && { timed_out: true, hint: `killed after ${seconds}s; raise timeout or do less per call` }),
+          ...(timedOut && {
+            timed_out: true,
+            hint: `killed after ${seconds}s; raise timeout or do less per call`,
+          }),
         });
       });
     }),

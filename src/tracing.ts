@@ -53,8 +53,13 @@ class XRayExporter implements SpanExporter {
       headers: { host: ENDPOINT.host, 'content-type': 'application/x-protobuf' },
       body,
     });
-    const res = await fetch(ENDPOINT, { method: 'POST', headers: signed.headers, body: Buffer.from(body) });
-    if (!res.ok) throw new Error(`x-ray returned ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    const res = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: signed.headers,
+      body: Buffer.from(body),
+    });
+    if (!res.ok)
+      throw new Error(`x-ray returned ${res.status}: ${(await res.text()).slice(0, 200)}`);
   }
 
   async shutdown(): Promise<void> {}
@@ -97,7 +102,10 @@ export function startTracing(): void {
   provider = new NodeTracerProvider({
     resource: resourceFromAttributes({ 'service.name': 'harness', ...resourceAttributesFromEnv() }),
     sampler: new AlwaysOnSampler(), // every session, not a sample of them
-    spanProcessors: [...(REDACT_TRACE_CONTENT ? [redactor] : []), new BatchSpanProcessor(new XRayExporter())],
+    spanProcessors: [
+      ...(REDACT_TRACE_CONTENT ? [redactor] : []),
+      new BatchSpanProcessor(new XRayExporter()),
+    ],
   });
   // Registers the global tracer provider; Strands picks it up from there.
   provider.register();
