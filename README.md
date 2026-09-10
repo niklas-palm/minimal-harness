@@ -137,10 +137,19 @@ A harness you can't observe isn't much of a harness, so tracing is on by
 default. Strands emits OpenTelemetry spans for the agent loop, every model
 call and every tool call. `src/tracing.ts` registers a tracer provider that
 exports them, SigV4-signed, to X-Ray's OTLP endpoint, and CloudWatch
-Transaction Search turns them into the per-session view in
-**CloudWatch > GenAI Observability**. Each span carries `session.id`, so one
-invocation is one trace, and the sampler is always-on: every session is
-exported, not a sample of them.
+Transaction Search turns them into the Agent, Session and Trace views in
+**CloudWatch > GenAI Observability**. Every span carries `session.id`, so one
+invocation is one trace and a session groups its traces, and the sampler is
+always-on: every session is exported, not a sample of them.
+
+The console's Agent and Session views need three things AWS's own ADOT distro
+would add for you, so `tracing.ts` does them itself: the resource is marked
+`aws.service.type = gen_ai_agent`, `session.id` goes on every span (Strands
+only sets it on the root), and spans are delivered to the agent's own log group
+(the `spans` stream AgentCore creates under
+`/aws/bedrock-agentcore/runtimes/<agent>-DEFAULT`) rather than the shared
+`aws/spans` group. Without those, traces show up under Transaction Search but
+the agent views stay empty.
 
 One-time account setup, per region:
 
@@ -148,7 +157,8 @@ One-time account setup, per region:
 make observability.enable
 ```
 
-That does three things: lets X-Ray write to CloudWatch Logs, points X-Ray at
+That does three things: lets X-Ray write to CloudWatch Logs (the shared
+`aws/spans` group and every AgentCore agent's own log group), points X-Ray at
 CloudWatch Logs, and sets the indexing rule to 100% so every trace is
 searchable (the default indexes a sample). It's deliberately not part of the
 stack: the setting is shared by every agent in the account and region, so

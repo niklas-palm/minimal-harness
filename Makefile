@@ -75,12 +75,14 @@ destroy:
 # turns them into structured logs in the aws/spans log group, which is what
 # the CloudWatch GenAI Observability console reads. Three account-level
 # settings: let X-Ray write to CloudWatch Logs, point X-Ray at CloudWatch
-# Logs, and index 100% of spans so every session shows up (the default is a
-# sample). Not part of the stack on purpose: it's shared by every agent in
-# the account and region, so destroying one stack shouldn't turn it off.
+# Logs (for the shared aws/spans group and for every AgentCore agent's own log
+# group, where this sample delivers its spans), and index 100% of spans so
+# every session shows up (the default is a sample). Not part of the stack on
+# purpose: it's shared by every agent in the account and region, so destroying
+# one stack shouldn't turn it off.
 observability.enable:
 	@aws logs put-resource-policy --region $(REGION) --policy-name TransactionSearchXRayAccess --policy-document \
-	  '{"Version":"2012-10-17","Statement":[{"Sid":"TransactionSearchXRayAccess","Effect":"Allow","Principal":{"Service":"xray.amazonaws.com"},"Action":"logs:PutLogEvents","Resource":["arn:aws:logs:$(REGION):$(ACCOUNT):log-group:aws/spans:*","arn:aws:logs:$(REGION):$(ACCOUNT):log-group:/aws/application-signals/data:*"],"Condition":{"ArnLike":{"aws:SourceArn":"arn:aws:xray:$(REGION):$(ACCOUNT):*"},"StringEquals":{"aws:SourceAccount":"$(ACCOUNT)"}}}]}' >/dev/null
+	  '{"Version":"2012-10-17","Statement":[{"Sid":"TransactionSearchXRayAccess","Effect":"Allow","Principal":{"Service":"xray.amazonaws.com"},"Action":"logs:PutLogEvents","Resource":["arn:aws:logs:$(REGION):$(ACCOUNT):log-group:aws/spans:*","arn:aws:logs:$(REGION):$(ACCOUNT):log-group:/aws/application-signals/data:*","arn:aws:logs:$(REGION):$(ACCOUNT):log-group:/aws/bedrock-agentcore/runtimes/*:*"],"Condition":{"ArnLike":{"aws:SourceArn":"arn:aws:xray:$(REGION):$(ACCOUNT):*"},"StringEquals":{"aws:SourceAccount":"$(ACCOUNT)"}}}]}' >/dev/null
 	@aws xray update-trace-segment-destination --region $(REGION) --destination CloudWatchLogs 2>/dev/null || echo "trace destination already CloudWatchLogs"
 	aws xray update-indexing-rule --region $(REGION) --name Default --rule '{"Probabilistic":{"DesiredSamplingPercentage":100}}'
 	@echo "Transaction Search on in $(REGION), indexing 100% of spans. Activation can take a few minutes."
