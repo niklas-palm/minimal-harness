@@ -1,6 +1,7 @@
-.PHONY: help install typecheck deploy destroy invoke logs ecr.create build.push
+.PHONY: help install typecheck deploy destroy invoke logs ecr.create build.push observability.enable
 
-REGION       := eu-north-1
+# config.json is the single source of truth for region and feature switches.
+REGION       := $(shell node -p "require('./config.json').region")
 REPO_NAME    := harness
 STACK        := Harness-Runtime
 
@@ -10,16 +11,17 @@ REGISTRY = $(ACCOUNT).dkr.ecr.$(REGION).amazonaws.com
 CDK       := $(CURDIR)/cdk/node_modules/.bin/cdk
 TAGS_FILE := /tmp/harness-image-tag.json
 # Files whose content determines the image tag - change any, get a new tag.
-HASH_INPUTS := src skills Dockerfile package.json package-lock.json
+HASH_INPUTS := src skills config.json Dockerfile package.json package-lock.json
 
 help:
 	@echo "Setup:"
 	@echo "  make install     Install root + cdk deps"
 	@echo "  make typecheck   tsc --noEmit"
 	@echo ""
-	@echo "Deploy (eu-north-1):"
-	@echo "  make deploy      Build + push the image, then cdk deploy"
-	@echo "  make destroy     Tear down the stack"
+	@echo "Deploy (region from config.json):"
+	@echo "  make deploy                Build + push the image, then cdk deploy"
+	@echo "  make destroy               Tear down the stack"
+	@echo "  make observability.enable  One-time: turn on CloudWatch Transaction Search (100% indexing)"
 	@echo ""
 	@echo "Run:"
 	@echo "  make invoke PROMPT='what is 2+2? show your working'"
@@ -56,14 +58,32 @@ build.push: ecr.create
 	echo "{\"imageTag\":\"$$TAG\"}" > $(TAGS_FILE); \
 	echo "wrote $(TAGS_FILE)"
 
-# CDK_ARGS passes extra flags/context through, e.g.
-#   make deploy CDK_ARGS='-c bedrockModelId=global.anthropic.claude-sonnet-4-6'
+# Settings live in config.json, not in flags. CDK_ARGS is only for passing
+# raw cdk options through if you ever need to.
 deploy: build.push
 	cd cdk && npm install --silent
 	cd cdk && $(CDK) deploy --all --require-approval never -c imageTagsFile=$(TAGS_FILE) $(CDK_ARGS)
 
 destroy:
 	cd cdk && $(CDK) destroy --all --force -c imageTagsFile=$(TAGS_FILE)
+
+# ---------------------------------------------------------------------------
+# Observability (one-time, per account and region)
+# ---------------------------------------------------------------------------
+# Spans exported by the runtime land in X-Ray. CloudWatch Transaction Search
+# turns them into structured logs in the aws/spans log group, which is what
+# the CloudWatch GenAI Observability console reads. Three account-level
+# settings: let X-Ray write to CloudWatch Logs, point X-Ray at CloudWatch
+# Logs, and index 100% of spans so every session shows up (the default is a
+# sample). Not part of the stack on purpose: it's shared by every agent in
+# the account and region, so destroying one stack shouldn't turn it off.
+observability.enable:
+	@aws logs put-resource-policy --region $(REGION) --policy-name TransactionSearchXRayAccess --policy-document \
+	  '{"Version":"2012-10-17","Statement":[{"Sid":"TransactionSearchXRayAccess","Effect":"Allow","Principal":{"Service":"xray.amazonaws.com"},"Action":"logs:PutLogEvents","Resource":["arn:aws:logs:$(REGION):$(ACCOUNT):log-group:aws/spans:*","arn:aws:logs:$(REGION):$(ACCOUNT):log-group:/aws/application-signals/data:*"],"Condition":{"ArnLike":{"aws:SourceArn":"arn:aws:xray:$(REGION):$(ACCOUNT):*"},"StringEquals":{"aws:SourceAccount":"$(ACCOUNT)"}}}]}' >/dev/null
+	@aws xray update-trace-segment-destination --region $(REGION) --destination CloudWatchLogs 2>/dev/null || echo "trace destination already CloudWatchLogs"
+	aws xray update-indexing-rule --region $(REGION) --name Default --rule '{"Probabilistic":{"DesiredSamplingPercentage":100}}'
+	@echo "Transaction Search on in $(REGION), indexing 100% of spans. Activation can take a few minutes."
+	@echo "Traces: CloudWatch > GenAI Observability."
 
 # ---------------------------------------------------------------------------
 # Run
