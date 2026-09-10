@@ -1,6 +1,6 @@
 {
   "name": "harness",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -10,11 +10,17 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@aws-sdk/client-bedrock-runtime": "^3.660.0",
-    "@strands-agents/sdk": "^1.4.0",
+    "@aws-crypto/sha256-js": "^5.2.0",
+    "@aws-sdk/credential-provider-node": "^3.972.0",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/core": "^2.11.0",
+    "@opentelemetry/otlp-transformer": "^0.222.0",
+    "@opentelemetry/resources": "^2.11.0",
+    "@opentelemetry/sdk-trace-base": "^2.11.0",
+    "@opentelemetry/sdk-trace-node": "^2.11.0",
+    "@smithy/signature-v4": "^5.4.0",
+    "@strands-agents/sdk": "^1.17.0",
     "bedrock-agentcore": "^0.2.4",
-    "duck-duck-scrape": "^2.2.7",
-    "fast-glob": "^3.3.2",
     "zod": "^4.1.0"
   },
   "devDependencies": {
