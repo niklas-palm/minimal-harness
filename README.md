@@ -40,7 +40,12 @@ invocation to a `runtimeSessionId`, and each one gets its own microVM with
 isolated compute, memory and filesystem. No two callers ever share an
 environment, which is exactly what makes it safe to hand the agent a raw
 shell. Re-using a session id routes back to the same microVM (until it idles
-out), and the sample uses a fresh id per call, so every run is clean.
+out), and the sample leans on that: the agent is created once per microVM and
+reused, so a second invocation with the same session id continues the same
+conversation. That is the whole session store. There's no external one, and
+when the microVM idles out the conversation goes with it. `make invoke` picks
+a fresh id per call by default, so every run is clean; pass `SESSION_ID=` to
+continue one.
 
 **Asynchronous by design.** The invoke returns `accepted` immediately rather
 than blocking, since the agent may run for minutes. Its progress and final
@@ -191,12 +196,18 @@ make deploy                           # build + push the ARM64 image, then cdk d
 make invoke PROMPT='Compute 7 factorial with a Python script and tell me the number.'
 make logs                             # tail the runtime's CloudWatch logs
 
+# continue a conversation: reuse the session id `make invoke` printed
+make invoke SESSION_ID=<id> PROMPT='Now divide it by 8.'
+
 make destroy                          # tear it all down
 ```
 
 `make invoke` returns `accepted` immediately and the agent runs
 asynchronously, so watch `make logs` for the tool calls and the final answer.
-CloudWatch delivery can lag a minute or two on a cold runtime.
+CloudWatch delivery can lag a minute or two on a cold runtime. A follow-up
+call with the same `SESSION_ID` within the idle timeout (120 seconds by
+default, see `cdk/lib/runtime-stack.ts`) lands in the same microVM and the
+agent remembers the earlier turns.
 
 To change the model, region or a feature switch, edit `config.json` and
 deploy again.

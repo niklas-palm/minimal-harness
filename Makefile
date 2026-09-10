@@ -25,6 +25,7 @@ help:
 	@echo ""
 	@echo "Run:"
 	@echo "  make invoke PROMPT='what is 2+2? show your working'"
+	@echo "  make invoke SESSION_ID=<id> PROMPT='...'   Continue a conversation in the same microVM"
 	@echo "  make logs        Tail the runtime's CloudWatch logs"
 
 install:
