@@ -171,10 +171,9 @@ Dockerfile does.
 **A note on span content.** In agent mode the distro records what was said,
 prompts, model output and tool payloads, as span events, same as any
 ADOT-instrumented agent, and it's visible in the trace detail. This sample
-leaves that on. If you don't want conversation content in your logs, the clean
-answer is a redacting exporter or a Strands option to stop recording it; the
-earlier version of this sample redacted content in a hand-rolled exporter,
-which is an option if you go back to signing the export yourself.
+leaves that on. If you don't want conversation content in your logs, add a
+Strands option to stop recording it, or sign the export yourself with a
+redacting step in the middle.
 
 ---
 
