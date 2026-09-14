@@ -73,7 +73,10 @@ export class RuntimeStack extends Stack {
 
     // Bedrock model invocation. Unscoped so cross-region inference profiles
     // (e.g. global.anthropic.claude-opus-4-8) work without listing every
-    // sub-arn. ReadOnlyAccess does not include bedrock:Converse*.
+    // sub-arn. ReadOnlyAccess does not include bedrock:Converse*. The
+    // `bedrock-mantle` actions are the OpenAI-compatible endpoint that
+    // src/agent.ts uses for OpenAI model ids: the SDK signs a bearer token
+    // locally and Mantle authorizes it as CallWithBearerToken.
     role.addToPolicy(
       new PolicyStatement({
         actions: [
@@ -81,6 +84,8 @@ export class RuntimeStack extends Stack {
           "bedrock:InvokeModelWithResponseStream",
           "bedrock:Converse",
           "bedrock:ConverseStream",
+          "bedrock-mantle:CallWithBearerToken",
+          "bedrock-mantle:CreateInference",
         ],
         resources: ["*"],
       }),

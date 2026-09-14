@@ -219,6 +219,14 @@ agent remembers the earlier turns.
 To change the model, region or a feature switch, edit `config.json` and
 deploy again.
 
+Anthropic and OpenAI models both work, and `src/agent.ts` picks the right
+provider from the id. Anthropic ids go through Bedrock's Converse API, while
+OpenAI ids (`openai.gpt-5.6-luna` and friends) go through Bedrock's
+OpenAI-compatible endpoint, which currently only exists in `us-east-1` and is
+pinned there independently of `region`. Both are keyless: the bearer token is
+minted from the same AWS credentials, so there is no API key either way. Use the
+plain `openai.*` id, since the `global.` cross-region profiles are Anthropic-only.
+
 ---
 
 ## Project layout

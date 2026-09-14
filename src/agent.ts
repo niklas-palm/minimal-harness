@@ -4,6 +4,7 @@
 // The agent gets the four base tools, web_fetch, web_search when the stack
 // enabled it, and the skills plugin; nothing else.
 import { Agent, BedrockModel } from "@strands-agents/sdk";
+import { OpenAIModel } from "@strands-agents/sdk/models/openai";
 import { AgentSkills } from "@strands-agents/sdk/vended-plugins/skills";
 
 import {
@@ -16,6 +17,35 @@ import { emit } from "./emit.js";
 import { SYSTEM_PROMPT } from "./prompt.js";
 import { TOOLS } from "./tools.js";
 import { webFetch, webSearch } from "./web.js";
+
+const MAX_TOKENS = 25000;
+
+// Bedrock serves OpenAI models through an OpenAI-compatible endpoint ("Mantle")
+// rather than the Converse API, so they need OpenAIModel instead of
+// BedrockModel. Both are keyless: Mantle mints a bearer token from the same AWS
+// credentials. Mantle currently only exists in us-east-1, so it is pinned there
+// no matter where the rest of the stack runs.
+const MANTLE_REGION = "us-east-1";
+
+function buildModel() {
+  if (BEDROCK_MODEL_ID.includes("openai.")) {
+    return new OpenAIModel({
+      // `global.` cross-region profiles are an Anthropic thing; Mantle wants the plain id.
+      modelId: BEDROCK_MODEL_ID.replace(/^global\./, ""),
+      maxTokens: MAX_TOKENS,
+      bedrockMantleConfig: { region: MANTLE_REGION },
+      // The OpenAI client defaults to 10 minutes and 2 retries, so one wedged
+      // request could hold the microVM for half an hour of billable time.
+      clientConfig: { timeout: 120_000, maxRetries: 2 },
+    });
+  }
+  return new BedrockModel({
+    modelId: BEDROCK_MODEL_ID,
+    region: REGION,
+    maxTokens: MAX_TOKENS,
+    cacheConfig: { strategy: "auto" },
+  });
+}
 
 // Hard stop for runaway loops. One run should never need this many model
 // calls; hitting it ends the run with whatever the agent has so far.
@@ -36,12 +66,7 @@ export function buildAgent(sessionId: string): Agent {
 
   const agent = new Agent({
     name: "harness",
-    model: new BedrockModel({
-      modelId: BEDROCK_MODEL_ID,
-      region: REGION,
-      maxTokens: 25000,
-      cacheConfig: { strategy: "auto" },
-    }),
+    model: buildModel(),
     tools: tools as any,
     plugins: [skillsPlugin],
     systemPrompt: SYSTEM_PROMPT,
