@@ -18,7 +18,8 @@ works in the sandbox without installing anything.
 2. Write the following to a file and run it with `bash` (`python3 banner.py`), substituting the text:
 
 ```python
-# A minimal 5-row block font covering A-Z, 0-9 and space.
+# A 5-row block font with just enough glyphs for "HELLO". Extend FONT for
+# anything else - see step 3.
 text = "HELLO"  # <- the user's text, uppercased
 
 FONT = {
